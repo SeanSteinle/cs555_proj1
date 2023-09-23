@@ -1,5 +1,5 @@
 #imports
-import sys, random
+import sys, random, socket, struct
 
 #helper functions
 
@@ -65,9 +65,22 @@ print(f"Sending DNS query...")
 
 #Section #2: Send DNS Query
 print(f"Contacting DNS server...\n")
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.connect(('8.8.8.8', 53))
+for attempt_num in range(1,4):
+    sending_bytes = sock.sendto(bytearray.fromhex(hquery[2:]),('8.8.8.8', 53))
+    (message,src_addr) = sock.recvfrom(100000000) #4096 is the max bytes we'll receive
+    if message != None:
+        break
+if message == None:
+    raise TimeoutError("Timeout! No response from the DNS server.")
+sock.close()
+
+print(f"MESSAGE RECEIVED!: {message}")
+print(len(message))
+
 
 #Section #3: Interpret DNS Response
-attempt_num = -1
 print(f"DNS response received (attempt {attempt_num} of 3).")
 
 print(f"Processing DNS response...")
