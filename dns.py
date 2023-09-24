@@ -8,6 +8,29 @@ def text2bin(text):
     chars = [format(ord(i), '08b') for i in text]
     return [int(bit) for char in chars for bit in char]
 
+#returns list of 0 or 1 for the provide integer of length bits.
+def num2bin(bits, num):
+    bin = [0 for i in range(0, bits)]
+    i = bits - 1
+    while num != 0:
+        bin[i] = num % 2
+        num //= 2
+        i -= 1
+    return bin
+
+#does entire label creation routine, including ending with a 0. separators are 1 byte unsigned ints. returns as list of str where each elem is '0' or '1'
+def create_labels_without_asciinums(hostname):
+    labels = hostname.split(".")
+    labels_bin = []
+
+    for label in labels:
+        labels_bin.extend(num2bin(8, len(label)))
+        labels_bin.extend(text2bin(label))
+
+    labels_bin.extend(num2bin(8, 0))
+    
+    return labels_bin
+
 #does entire label creation routine, including ending with a "0". returns as list of str where each elem is '0' or '1'
 def create_labels(hostname):
     labels = hostname.split(".")
@@ -38,10 +61,15 @@ def write_header():
     return header
 
 def write_question(hostname):
-    qname = create_labels(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
+    qname = create_labels_without_asciinums(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
     qtype = [0 for i in range(0,16)] #16 bits. set to 1 because we want type A records.
-    qtype[15] = 1
-    qclass = text2bin("IN") #IN is the code for internet... what else would it be?
+    qtype[15] = 1 
+    #IN is the code for internet... what else would it be?
+    # qclass = text2bin("IN")
+
+    #IN in the correct code. But the value of IN is 1 apparently
+    qclass = [0 for i in range(0, 16)]
+    qclass[15] = 1
     question = [*qname, *qtype, *qclass]
     return question
 
