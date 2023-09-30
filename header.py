@@ -1,4 +1,24 @@
-import random
+import random, socket, time
+
+#helper function that converts string of bits (easy to construct and manipulate) to bytes() (required by socket) object! check out: https://stackoverflow.com/questions/32675679/convert-binary-string-to-bytearray-in-python-3
+def bitstring2bytes(s):
+    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
+
+#sends request of hex to Google's DNS server
+def send_request(request):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.connect(('8.8.8.8', 53))
+    for attempt_num in range(1,4):
+        sending_bytes = sock.sendto(request,('8.8.8.8', 53))
+
+        (message,src_addr) = sock.recvfrom(2048) #4096 is the max bytes we'll receive
+        if message != None:
+            break
+        time.sleep(5)
+    if message == None:
+        raise TimeoutError("Timeout! No response from the DNS server.")
+    sock.close()
+    return message
 
 class Header:
     def __init__(self, requestMode, responseHeaderStr):
@@ -9,23 +29,23 @@ class Header:
         return
     
     def write_header(self):
-        self.id = ['1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1'] #16 bits/first line
+        self.id = [str(random.randint(0,1)) for i in range(0,16)] #16 bits/first line
         self.id[0] = '1'
         self.qr = ['0'] #1 bit. set to '0' for query.
         self.opcode = ['0','0','0','0'] #4 bits. '0' signifies standard query.
         self.aa = ['0'] #1 bit
         self.tc = ['0'] #1 bit
-        self.rd = [1] #1 bit. set to 1 for recursive pursuit of query.
+        self.rd = ['1'] #1 bit. set to 1 for recursive pursuit of query.
         self.ra = ['0'] #1 bit
         self.z = ['0','0','0'] #3 bits
         self.rcode = ['0','0','0','0'] # 4 bits
         self.qdcount = ['0' for i in range(0,16)]
-        self.qdcount[15] = 1 #set qdcount to 1 because we send 1 query at a time.
+        self.qdcount[15] = '1' #set qdcount to 1 because we send 1 query at a time.
         self.ancount, self.nscount, self.arcount = ['0' for i in range(0,16)], ['0' for i in range(0,16)], ['0' for i in range(0,16)]
         line2 = [*self.qr, *self.opcode, *self.aa, *self.tc, *self.rd, *self.ra, *self.z, *self.rcode]
         header = [*self.id, *line2, *self.qdcount, *self.ancount, *self.nscount, *self.arcount]
-        self.hex_representation = bytes.fromhex(hex(int(''.join(map(str, header)), 2))[2:])
-        #self.header = [*id, *line2, *qdcount, *ancount, *nscount, *arcount]
+        header_str = ''.join(header)
+        self.hex_representation = bitstring2bytes(header_str)
 
     def process_header(self, response_header_str):
         self.id = f'{response_header_str[0]:08b}'+f'{response_header_str[1]:08b}' #bin parsing idea from https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
@@ -43,7 +63,11 @@ class Header:
         self.nscount = f'{response_header_str[8]:08b}'+f'{response_header_str[9]:08b}'
         self.arcount = f'{response_header_str[10]:08b}'+f'{response_header_str[11]:08b}'
         header = [*self.id, *line2, *self.qdcount, *self.ancount, *self.nscount, *self.arcount]
-        self.hex_representation = bytes.fromhex(hex(int(''.join(map(str, header)), 2))[2:])
+        header_str = ''.join(header)
+        self.hex_representation = bitstring2bytes(header_str)
+
+    def fields(self):
+        return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 class Question:
     def __init__(self, hostname):
@@ -51,16 +75,17 @@ class Question:
 
     def write_question(self, hostname):
         self.qname = self.create_labels(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
-        self.qtype = [0 for i in range(0,16)] #16 bits. set to 1 because we want type A records.
-        self.qtype[15] = 1 
+        self.qtype = ['0' for i in range(0,16)] #16 bits. set to 1 because we want type A records.
+        self.qtype[15] = '1' 
         #IN is the code for internet... what else would it be?
         # qclass = text2bin("IN")
         #IN in the correct code. But the value of IN is 1 apparently
-        self.qclass = [0 for i in range(0, 16)]
-        self.qclass[15] = 1
+        self.qclass = ['0' for i in range(0, 16)]
+        self.qclass[15] = '1'
         question = [*self.qname, *self.qtype, *self.qclass]
-        print(question)
-        self.hex_representation = bytes.fromhex(hex(int(''.join(map(str, question)), 2))[2:])
+        question = [str(bit) for bit in question]
+        question_str = ''.join(question)
+        self.hex_representation = bitstring2bytes(question_str)
     
     #does entire label creation routine, including ending with a 0. separators are 1 byte unsigned ints. returns as list of str where each elem is '0' or '1'
     def create_labels(self, hostname):
@@ -87,20 +112,25 @@ class Question:
             i -= 1
         return bin
 
+    def fields(self):
+        return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
+
 #main
 hostname = "gmu.edu"
 request_header = Header(True, "")
 request_question = Question(hostname)
 
-print(f"header hex: {request_header.hex_representation}\tquestion hex: {request_question.hex_representation}")
-#HERE
-#request = request_header.hex_representation+request_question.hex_representation
+#send request, receive and split response
+request_hex = request_header.hex_representation+request_question.hex_representation
+response_hex = send_request(request_hex)
+question_end = 12+len(request_question.hex_representation)
+response_header_hex, response_question_hex, response_answer_hex = response_hex[:12], response_hex[12:question_end], response_hex[question_end:]
 
-#response = send_request(request)
-
-#response_header_hex, response_question_hex, response_answer_hex = split_response(response)
-
-#response_header = Header(False, response_header_hex)
+#here
+response_header = Header(False, response_header_hex)
+print(f"request header: {request_header.hex_representation}\nresponse header: {response_header.hex_representation}")
+for field in response_header.fields():
+    print(f"{field}: {getattr(response_header,field)}")
 
 #response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
 #assert response_question_hex == request_question.hex_representation
