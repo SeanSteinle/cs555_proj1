@@ -9,7 +9,7 @@ class Header:
         return
     
     def write_header(self):
-        self.id = [str(random.randint(0,1)) for i in range(0,16)] #16 bits/first line
+        self.id = ['1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1'] #16 bits/first line
         self.id[0] = '1'
         self.qr = ['0'] #1 bit. set to '0' for query.
         self.opcode = ['0','0','0','0'] #4 bits. '0' signifies standard query.
