@@ -115,6 +115,23 @@ class Question:
     def fields(self):
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
+class Answer:
+    def __init__(self, responseAnswerStr):
+        self.process_response(responseAnswerStr)
+
+    def process_response(self, responseAnswerStr):
+        print(f"answer string: {responseAnswerStr}\nsize: {len(responseAnswerStr)}")
+        return ""
+    
+class ResourceRecord:
+    def __init__(self, name, atype, aclass, ttl, rdlength, rdata):
+        self.name = name #variable length, specified by ???
+        self.atype = atype #2 bytes
+        self.aclass = aclass #2 bytes
+        self.ttl = ttl #4 bytes
+        self.rdlength = rdlength #2 bytes
+        self.rdata = rdata #variable length, specified by rdlength section
+
 #main
 hostname = "gmu.edu"
 request_header = Header(True, "")
@@ -126,20 +143,20 @@ response_hex = send_request(request_hex)
 question_end = 12+len(request_question.hex_representation)
 response_header_hex, response_question_hex, response_answer_hex = response_hex[:12], response_hex[12:question_end], response_hex[question_end:]
 
-#here
+#response header is similar to the request header, but a few flags may be different.
 response_header = Header(False, response_header_hex)
-print(f"request header: {request_header.hex_representation}\nresponse header: {response_header.hex_representation}")
+#print("Showing response header fields...")
 for field in response_header.fields():
-    print(f"{field}: {getattr(response_header,field)}")
+    pass
+    #print(f"{field}: {getattr(response_header,field)}")
 
 #response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
-#assert response_question_hex == request_question.hex_representation
-#response_question = request_question
+assert response_question_hex == request_question.hex_representation
+response_question = request_question
+#print("Showing response question fields...")
+for field in response_question.fields():
+    pass
+    #print(f"{field}: {getattr(response_question,field)}")
 
-#response_answer = Answer(response_answer_hex)
-
-#iterate and print like: https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
-
-#print(f"header id: {h.id}\nheader hex representation: {h.hex_representation}\nheader hex length: {len(h.hex_representation)}")
-#print("processing header: ")
-#h = Header(False, response)
+#here
+response_answer = Answer(response_answer_hex)
