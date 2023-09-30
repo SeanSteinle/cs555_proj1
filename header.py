@@ -46,14 +46,53 @@ class Header:
         self.hex_representation = bytes.fromhex(hex(int(''.join(map(str, header)), 2))[2:])
 
 class Question:
-    def __init__(self):
-        pass
+    def __init__(self, hostname):
+        self.write_question(hostname)
+
+    def write_question(self, hostname):
+        self.qname = self.create_labels(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
+        self.qtype = [0 for i in range(0,16)] #16 bits. set to 1 because we want type A records.
+        self.qtype[15] = 1 
+        #IN is the code for internet... what else would it be?
+        # qclass = text2bin("IN")
+        #IN in the correct code. But the value of IN is 1 apparently
+        self.qclass = [0 for i in range(0, 16)]
+        self.qclass[15] = 1
+        question = [*self.qname, *self.qtype, *self.qclass]
+        print(question)
+        self.hex_representation = bytes.fromhex(hex(int(''.join(map(str, question)), 2))[2:])
+    
+    #does entire label creation routine, including ending with a 0. separators are 1 byte unsigned ints. returns as list of str where each elem is '0' or '1'
+    def create_labels(self, hostname):
+        labels = hostname.split(".")
+        labels_bin = []
+        for label in labels:
+            labels_bin.extend(self.num2bin(8, len(label)))
+            labels_bin.extend(self.text2bin(label))
+        labels_bin.extend(self.num2bin(8, 0))
+        return labels_bin
+    
+    #returns ASCII code in binary for provided text. returns as list of str where each elem is '0' or '1'
+    def text2bin(self, text):
+        chars = [format(ord(i), '08b') for i in text]
+        return [int(bit) for char in chars for bit in char]
+
+    #returns list of 0 or 1 for the provide integer of length bits.
+    def num2bin(self, bits, num):
+        bin = [0 for i in range(0, bits)]
+        i = bits - 1
+        while num != 0:
+            bin[i] = num % 2
+            num //= 2
+            i -= 1
+        return bin
 
 #main
 hostname = "gmu.edu"
 request_header = Header(True, "")
-print(request_header.hex_representation)
-#request_question = Question(hostname)
+request_question = Question(hostname)
+
+print(f"header hex: {request_header.hex_representation}\tquestion hex: {request_question.hex_representation}")
 #HERE
 #request = request_header.hex_representation+request_question.hex_representation
 
