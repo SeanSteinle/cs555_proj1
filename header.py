@@ -121,7 +121,7 @@ class Answer:
 
     def process_response(self, responseAnswerStr):
         print(f"answer string: {responseAnswerStr}\nsize: {len(responseAnswerStr)}")
-        return ""
+        return [] #return list of RRs
     
 class ResourceRecord:
     def __init__(self, name, atype, aclass, ttl, rdlength, rdata):

@@ -1,0 +1,25 @@
+DONE:
+
+1. found bug with our previous string->hex functions. 
+    - there was truncation going on when ids or labels had leading 0s.
+    - replaced with bitstring2bytes() function.
+
+2. organized header, question, and answer objects for writing/processing purposes
+    - saves us having to process questions.
+    - makes dumping fields easier.
+    - rewrote main script to go along w/ these changes
+
+did all of these changes in header.py. can replace code in dns.py if you'd like.
+
+TD:
+
+1. fill out Answer class, specifically process_response()
+    - not sure how large the name domain is... everything else is pretty clear.
+    - Answer class should contain list of resource records.
+
+2. show entire pipeline working for a few different domains.
+    - gmu.edu, google.com, etc.
+
+3. test more thoroughly--many different sites run many times (100x?)
+
+4. change formatting, add necessary files like Partner.txt or whatever the instructions say.
