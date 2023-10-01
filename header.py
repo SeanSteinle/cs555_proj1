@@ -116,24 +116,62 @@ class Question:
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 class Answer:
-    def __init__(self, responseAnswerStr):
-        self.process_response(responseAnswerStr)
+    def __init__(self, responseAnswerHex, numRecords):
+        self.RRs = self.process_response(responseAnswerHex, numRecords)
 
-    def process_response(self, responseAnswerStr):
-        print(f"answer string: {responseAnswerStr}\nsize: {len(responseAnswerStr)}")
-        return [] #return list of RRs
+    def process_response(self, responseAnswerHex, numRecords):
+        # print(f"answer string: {responseAnswerHex}\nsize: {len(responseAnswerHex)}")
+
+        RRs = []
+        offset = 0
+
+        for i in range(numRecords):
+            rr = ResourceRecord(responseAnswerHex[offset:])
+            offset += rr.end
+            RRs.append(rr)
+            
+        return RRs #return list of RRs
     
 class ResourceRecord:
-    def __init__(self, name, atype, aclass, ttl, rdlength, rdata):
-        self.name = name #variable length, specified by ???
-        self.atype = atype #2 bytes
-        self.aclass = aclass #2 bytes
-        self.ttl = ttl #4 bytes
-        self.rdlength = rdlength #2 bytes
-        self.rdata = rdata #variable length, specified by rdlength section
+    # def __init__(self, name, atype, aclass, ttl, rdlength, rdata):
+    #     self.name = name #variable length, specified by ???
+    #     self.atype = atype #2 bytes
+    #     self.aclass = aclass #2 bytes
+    #     self.ttl = ttl #4 bytes
+    #     self.rdlength = rdlength #2 bytes
+    #     self.rdata = rdata #variable length, specified by rdlength section
+
+    def __init__(self, rrHex):
+        offset = 0 #beginning of the RR after the name field
+        if rrHex[0] >= 192: #192 is 1100 0000 which indicates that the entry uses compression
+            offset = 2
+            self.name = None
+        else:
+            #Need to implement if server does not use compression. Everyone uses compression though?
+            print("RR does not use compression. Exiting for now.")
+            return
+        
+        rrHex = rrHex[offset:]
+
+        self.atype = f'{rrHex[0]:08b}'+f'{rrHex[1]:08b}'
+        self.aclass = f'{rrHex[2]:08b}'+f'{rrHex[3]:08b}'
+        self.ttl = int.from_bytes(rrHex[4:8])
+        self.rdlength = int.from_bytes(rrHex[8:10])
+        self.rdata = self.parseIP(rrHex[10:14])
+        self.end = offset + 14
+    
+    def parseIP(self, rdata):
+        return ''.join(
+            [f'{rdata[0]}', '.',
+            f'{rdata[1]}', '.',
+            f'{rdata[2]}', '.',
+            f'{rdata[3]}'])
+    
+    def fields(self):
+        return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 #main
-hostname = "gmu.edu"
+hostname = "google.com"
 request_header = Header(True, "")
 request_question = Question(hostname)
 
@@ -159,4 +197,10 @@ for field in response_question.fields():
     #print(f"{field}: {getattr(response_question,field)}")
 
 #here
-response_answer = Answer(response_answer_hex)
+response_answer = Answer(response_answer_hex, int(response_header.ancount, 2))
+RRs = response_answer.RRs
+for RR in RRs:
+    for field in RR.fields():
+        # pass
+        print(f"{field}: {getattr(RR,field)}")
+
