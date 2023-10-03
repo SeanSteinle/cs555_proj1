@@ -4,6 +4,45 @@ import random, socket, time
 def bitstring2bytes(s):
     return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
 
+#returns ASCII code in binary for provided text. returns as list of str where each elem is '0' or '1'
+def text2bin(text):
+    chars = [format(ord(i), '08b') for i in text]
+    return [int(bit) for char in chars for bit in char]
+
+#returns list of 0 or 1 for the provide integer of length bits.
+def num2bin(bits, num):
+    bin = [0 for i in range(0, bits)]
+    i = bits - 1
+    while num != 0:
+        bin[i] = num % 2
+        num //= 2
+        i -= 1
+    return bin
+
+#does entire label creation routine, including ending with a 0. separators are 1 byte unsigned ints. returns as list of str where each elem is '0' or '1'
+def create_labels(hostname):
+    labels = hostname.split(".")
+    labels_bin = []
+    for label in labels:
+        labels_bin.extend(num2bin(8, len(label)))
+        labels_bin.extend(text2bin(label))
+    labels_bin.extend(num2bin(8, 0))
+    return labels_bin
+
+#helper function to parse length separated web address from bytes
+def separatedBytes(bytes):
+    web_address = ''
+    offset = 0
+    while bytes[offset] != 0:
+        if web_address != '':
+            web_address += '.'
+        nextSegment = bytes[offset] + offset + 1
+        for byte in bytes[offset+1:nextSegment]:
+            web_address += chr(byte)
+        offset = nextSegment
+    offset+=1
+    return (web_address, offset)
+
 #sends request of hex to Google's DNS server
 def send_request(request):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -21,11 +60,11 @@ def send_request(request):
     return message
 
 class Header:
-    def __init__(self, requestMode, responseHeaderStr):
+    def __init__(self, requestMode, responseHeader):
         if requestMode:
             self.write_header()
         else:
-            self.process_header(responseHeaderStr)
+            self.process_header(responseHeader)
         return
     
     def write_header(self):
@@ -66,19 +105,36 @@ class Header:
         header_str = ''.join(header)
         self.hex_representation = bitstring2bytes(header_str)
 
+    def __str__(self):
+        return f"""header.ID = {self.id}
+header.QR = {self.qr}
+header.OPCODE = {self.opcode}
+header.AA = {self.aa}
+header.TC = {self.tc}
+header.RD = {self.rd}
+header.RA = {self.ra}
+header.Z = {self.z}
+header.RCODE = {self.rcode}
+header.QDCOUNT = {self.qdcount}
+header.ANCOUNT = {self.ancount}
+header.NSCOUNT = {self.nscount}
+header.ARCOUNT = {self.arcount}
+"""
+              
     def fields(self):
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 class Question:
-    def __init__(self, hostname):
-        self.write_question(hostname)
+    def __init__(self, hostname, requestMode, responseAnswer):
+        if requestMode:
+            self.write_question(hostname)
+        else:
+            self.process_question(responseAnswer)
 
     def write_question(self, hostname):
-        self.qname = self.create_labels(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
+        self.qname = create_labels(hostname) #up to 16 bits but no padding. encodes the content of the query. TD: do this!
         self.qtype = ['0' for i in range(0,16)] #16 bits. set to 1 because we want type A records.
-        self.qtype[15] = '1' 
-        #IN is the code for internet... what else would it be?
-        # qclass = text2bin("IN")
+        self.qtype[15] = '1'
         #IN in the correct code. But the value of IN is 1 apparently
         self.qclass = ['0' for i in range(0, 16)]
         self.qclass[15] = '1'
@@ -87,77 +143,57 @@ class Question:
         question_str = ''.join(question)
         self.hex_representation = bitstring2bytes(question_str)
     
-    #does entire label creation routine, including ending with a 0. separators are 1 byte unsigned ints. returns as list of str where each elem is '0' or '1'
-    def create_labels(self, hostname):
-        labels = hostname.split(".")
-        labels_bin = []
-        for label in labels:
-            labels_bin.extend(self.num2bin(8, len(label)))
-            labels_bin.extend(self.text2bin(label))
-        labels_bin.extend(self.num2bin(8, 0))
-        return labels_bin
+    def process_question(self, responseQuestionBytes):
+        self.qname, offset = separatedBytes(responseQuestionBytes)
+        responseQuestionBytes = responseQuestionBytes[offset:]
+        self.qtype = f'{responseQuestionBytes[0]:08b}'+f'{responseQuestionBytes[1]:08b}'
+        self.qclass = f'{responseQuestionBytes[2]:08b}'+f'{responseQuestionBytes[3]:08b}'
     
-    #returns ASCII code in binary for provided text. returns as list of str where each elem is '0' or '1'
-    def text2bin(self, text):
-        chars = [format(ord(i), '08b') for i in text]
-        return [int(bit) for char in chars for bit in char]
-
-    #returns list of 0 or 1 for the provide integer of length bits.
-    def num2bin(self, bits, num):
-        bin = [0 for i in range(0, bits)]
-        i = bits - 1
-        while num != 0:
-            bin[i] = num % 2
-            num //= 2
-            i -= 1
-        return bin
+    def __str__(self):
+        return f"""question.QNAME = {self.qname}
+question.QTYPE = {self.qtype}
+question.QCLASS = {self.qclass}
+"""
 
     def fields(self):
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 class Answer:
-    def __init__(self, responseAnswerHex, numRecords):
-        self.RRs = self.process_response(responseAnswerHex, numRecords)
+    def __init__(self, answerBytes, endQuestion, numRecords):
+        self.RRs = self.process_response(answerBytes, endQuestion, numRecords)
 
-    def process_response(self, responseAnswerHex, numRecords):
-        # print(f"answer string: {responseAnswerHex}\nsize: {len(responseAnswerHex)}")
-
+    def process_response(self, answerBytes, endQuestion, numRecords):
         RRs = []
-        offset = 0
+        offset = endQuestion
 
         for i in range(numRecords):
-            rr = ResourceRecord(responseAnswerHex[offset:])
+            rr = ResourceRecord(answerBytes[offset:])
+            if rr.name == None:
+                rr.name = separatedBytes(answerBytes[rr.pointer:])[0]
             offset += rr.end
             RRs.append(rr)
             
         return RRs #return list of RRs
     
 class ResourceRecord:
-    # def __init__(self, name, atype, aclass, ttl, rdlength, rdata):
-    #     self.name = name #variable length, specified by ???
-    #     self.atype = atype #2 bytes
-    #     self.aclass = aclass #2 bytes
-    #     self.ttl = ttl #4 bytes
-    #     self.rdlength = rdlength #2 bytes
-    #     self.rdata = rdata #variable length, specified by rdlength section
 
-    def __init__(self, rrHex):
+    def __init__(self, rrBytes):
         offset = 0 #beginning of the RR after the name field
-        if rrHex[0] >= 192: #192 is 1100 0000 which indicates that the entry uses compression
+        if rrBytes[0] >= 192: #192 is 1100 0000 which indicates that the entry uses compression
             offset = 2
             self.name = None
+            self.pointer = rrBytes[1]
         else:
-            #Need to implement if server does not use compression. Everyone uses compression though?
-            print("RR does not use compression. Exiting for now.")
-            return
+            web_address, offset = separatedBytes(rrBytes)
+            self.name = web_address
         
-        rrHex = rrHex[offset:]
+        rrBytes = rrBytes[offset:]
 
-        self.atype = f'{rrHex[0]:08b}'+f'{rrHex[1]:08b}'
-        self.aclass = f'{rrHex[2]:08b}'+f'{rrHex[3]:08b}'
-        self.ttl = int.from_bytes(rrHex[4:8])
-        self.rdlength = int.from_bytes(rrHex[8:10])
-        self.rdata = self.parseIP(rrHex[10:14])
+        self.atype = f'{rrBytes[0]:08b}'+f'{rrBytes[1]:08b}'
+        self.aclass = f'{rrBytes[2]:08b}'+f'{rrBytes[3]:08b}'
+        self.ttl = int.from_bytes(rrBytes[4:8])
+        self.rdlength = int.from_bytes(rrBytes[8:10])
+        self.rdata = self.parseIP(rrBytes[10:14])
         self.end = offset + 14
     
     def parseIP(self, rdata):
@@ -167,40 +203,49 @@ class ResourceRecord:
             f'{rdata[2]}', '.',
             f'{rdata[3]}'])
     
+    def __str__(self):
+        return f"""answer.NAME = {self.name}
+answer.TYPE = {self.atype}
+answer.CLASS = {self.aclass}
+answer.TTL = {self.ttl}
+answer.RDLENGTH = {self.rdlength}
+answer.RDATA = {self.rdata}
+"""
+    
     def fields(self):
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
 
 #main
-hostname = "google.com"
-request_header = Header(True, "")
-request_question = Question(hostname)
+# hostname = "google.com"
+# request_header = Header(True, "")
+# request_question = Question(hostname, True, None)
 
-#send request, receive and split response
-request_hex = request_header.hex_representation+request_question.hex_representation
-response_hex = send_request(request_hex)
-question_end = 12+len(request_question.hex_representation)
-response_header_hex, response_question_hex, response_answer_hex = response_hex[:12], response_hex[12:question_end], response_hex[question_end:]
+# #send request, receive and split response
+# request_hex = request_header.hex_representation+request_question.hex_representation
+# response_hex = send_request(request_hex)
+# question_end = 12+len(request_question.hex_representation)
+# response_header_hex, response_question_hex, response_answer_hex = response_hex[:12], response_hex[12:question_end], response_hex[question_end:]
 
-#response header is similar to the request header, but a few flags may be different.
-response_header = Header(False, response_header_hex)
-#print("Showing response header fields...")
-for field in response_header.fields():
-    pass
-    #print(f"{field}: {getattr(response_header,field)}")
+# #response header is similar to the request header, but a few flags may be different.
+# response_header = Header(False, response_header_hex)
+# #print("Showing response header fields...")
+# for field in response_header.fields():
+#     pass
+#     #print(f"{field}: {getattr(response_header,field)}")
 
-#response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
-assert response_question_hex == request_question.hex_representation
-response_question = request_question
-#print("Showing response question fields...")
-for field in response_question.fields():
-    pass
-    #print(f"{field}: {getattr(response_question,field)}")
+# #response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
+# assert response_question_hex == request_question.hex_representation
+# response_question = request_question
+# #print("Showing response question fields...")
+# for field in response_question.fields():
+#     pass
+#     #print(f"{field}: {getattr(response_question,field)}")
 
-#here
-response_answer = Answer(response_answer_hex, int(response_header.ancount, 2))
-RRs = response_answer.RRs
-for RR in RRs:
-    for field in RR.fields():
-        # pass
-        print(f"{field}: {getattr(RR,field)}")
+# #here
+# response_answer = Answer(response_answer_hex, int(response_header.ancount, 2))
+# RRs = response_answer.RRs
+# for RR in RRs:
+#     for field in RR.fields():
+#         # pass
+#         print(f"{field}: {getattr(RR,field)}")
 

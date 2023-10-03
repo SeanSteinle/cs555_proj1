@@ -1,10 +1,14 @@
-successes, attempts = 0, 100
-for i in range(0,attempts):
-    hostname = "gmu.edu"
-    request_header = Header(True, "")
-    request_question = Question(hostname)
-    request_hex = request_header.hex_representation+request_question.hex_representation
-    response = send_request(request_hex)
-    successes += response != None #should check that the response actually contains the answer..
-    time.sleep(random.randint(0,5))
-print(successes/attempts)
+import header
+
+testaddr = "www.google.com"
+
+testbin = header.create_labels(testaddr)
+# print(testbin)
+
+s = ''.join(str(v) for v in testbin)
+# print(s)
+
+testbytes = header.bitstring2bytes(s)
+print(testbytes)
+
+print(header.separatedBytes(testbytes))
