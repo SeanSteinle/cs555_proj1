@@ -39,10 +39,7 @@ print("Processing DNS response..")
 #response header is similar to the request header, but a few flags may be different.
 response_header = Header(False, response_header_hex)
 
-#response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
-# assert response_question_hex == request_question.hex_representation
-# response_question = request_question
-
+#parse question header
 response_question = Question(None, False, response_question_hex)
 
 #response answer should contain the number of RRs listed in the response header

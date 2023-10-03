@@ -191,8 +191,8 @@ class ResourceRecord:
 
         self.atype = f'{rrBytes[0]:08b}'+f'{rrBytes[1]:08b}'
         self.aclass = f'{rrBytes[2]:08b}'+f'{rrBytes[3]:08b}'
-        self.ttl = int.from_bytes(rrBytes[4:8])
-        self.rdlength = int.from_bytes(rrBytes[8:10])
+        self.ttl = int.from_bytes(rrBytes[4:8], byteorder='big')
+        self.rdlength = int.from_bytes(rrBytes[8:10], byteorder='big')
         self.rdata = self.parseIP(rrBytes[10:14])
         self.end = offset + 14
     
