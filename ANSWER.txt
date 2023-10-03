@@ -1,0 +1,127 @@
+python dns_client.py gmu.edu
+Preparing DNS query..
+Contacting DNS server..
+Sending DNS query..
+DNS response received (attempt 1 of 3)
+Processing DNS response..
+header.ID = 1100111011111010
+header.QR = 1
+header.OPCODE = 0000
+header.AA = 0
+header.TC = 0
+header.RD = 1
+header.RA = 1
+header.Z = 000
+header.RCODE = 0000
+header.QDCOUNT = 0000000000000001
+header.ANCOUNT = 0000000000000001
+header.NSCOUNT = 0000000000000000
+header.ARCOUNT = 0000000000000000
+
+question.QNAME = gmu.edu
+question.QTYPE = 0000000000000001
+question.QCLASS = 0000000000000001
+
+answer.NAME = gmu.edu
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 3376
+answer.RDLENGTH = 4
+answer.RDATA = 129.174.134.28
+
+python dns_client.py google.com
+Preparing DNS query..
+Contacting DNS server..
+Sending DNS query..
+DNS response received (attempt 1 of 3)
+Processing DNS response..
+header.ID = 1110111110101101
+header.QR = 1
+header.OPCODE = 0000
+header.AA = 0
+header.TC = 0
+header.RD = 1
+header.RA = 1
+header.Z = 000
+header.RCODE = 0000
+header.QDCOUNT = 0000000000000001
+header.ANCOUNT = 0000000000000110
+header.NSCOUNT = 0000000000000000
+header.ARCOUNT = 0000000000000000
+
+question.QNAME = google.com
+question.QTYPE = 0000000000000001
+question.QCLASS = 0000000000000001
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.113
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.100
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.139
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.102
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.101
+
+answer.NAME = google.com
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 126
+answer.RDLENGTH = 4
+answer.RDATA = 142.251.16.138
+
+python dns_client.py gnu.org
+Preparing DNS query..
+Contacting DNS server..
+Sending DNS query..
+DNS response received (attempt 1 of 3)
+Processing DNS response..
+header.ID = 1010011100110110
+header.QR = 1
+header.OPCODE = 0000
+header.AA = 0
+header.TC = 0
+header.RD = 1
+header.RA = 1
+header.Z = 000
+header.RCODE = 0000
+header.QDCOUNT = 0000000000000001
+header.ANCOUNT = 0000000000000001
+header.NSCOUNT = 0000000000000000
+header.ARCOUNT = 0000000000000000
+
+question.QNAME = gnu.org
+question.QTYPE = 0000000000000001
+question.QCLASS = 0000000000000001
+
+answer.NAME = gnu.org
+answer.TYPE = 0000000000000001
+answer.CLASS = 0000000000000001
+answer.TTL = 1635
+answer.RDLENGTH = 4
+answer.RDATA = 209.51.188.116

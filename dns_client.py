@@ -1,5 +1,5 @@
-import socket, time
-from header import *
+import socket, time, sys
+from dns_lib import *
 
 
 #sends request of hex to Google's DNS server
@@ -23,7 +23,8 @@ def send_request(request):
 
 #main
 print("Preparing DNS query..")
-hostname = "google.com"
+assert len(sys.argv) == 2 #run like `python dns_client.py <hostname>`
+hostname = sys.argv[1]
 request_header = Header(True, "")
 request_question = Question(hostname, True, None)
 
@@ -43,7 +44,8 @@ response_header = Header(False, response_header_hex)
 response_question = Question(None, False, response_question_hex)
 
 #response answer should contain the number of RRs listed in the response header
-response_answer = Answer(response_hex, question_end, int(response_header.ancount, 2))
+numRRs = int(response_header.arcount, 2) + int(response_header.ancount, 2) + int(response_header.nscount, 2)
+response_answer = Answer(response_hex, question_end, numRRs)
 RRs = response_answer.RRs
 
 print(response_header)

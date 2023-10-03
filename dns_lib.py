@@ -214,38 +214,3 @@ answer.RDATA = {self.rdata}
     
     def fields(self):
         return [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self, a))]
-
-#main
-# hostname = "google.com"
-# request_header = Header(True, "")
-# request_question = Question(hostname, True, None)
-
-# #send request, receive and split response
-# request_hex = request_header.hex_representation+request_question.hex_representation
-# response_hex = send_request(request_hex)
-# question_end = 12+len(request_question.hex_representation)
-# response_header_hex, response_question_hex, response_answer_hex = response_hex[:12], response_hex[12:question_end], response_hex[question_end:]
-
-# #response header is similar to the request header, but a few flags may be different.
-# response_header = Header(False, response_header_hex)
-# #print("Showing response header fields...")
-# for field in response_header.fields():
-#     pass
-#     #print(f"{field}: {getattr(response_header,field)}")
-
-# #response question should be the exact same as the request. confirm this, then simply reuse request question for response question.
-# assert response_question_hex == request_question.hex_representation
-# response_question = request_question
-# #print("Showing response question fields...")
-# for field in response_question.fields():
-#     pass
-#     #print(f"{field}: {getattr(response_question,field)}")
-
-# #here
-# response_answer = Answer(response_answer_hex, int(response_header.ancount, 2))
-# RRs = response_answer.RRs
-# for RR in RRs:
-#     for field in RR.fields():
-#         # pass
-#         print(f"{field}: {getattr(RR,field)}")
-
